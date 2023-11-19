@@ -100,17 +100,42 @@ class JiraTask:
                 f.write(f"本周完成总数{new_done_count + befor_done_count}, 未完成总数{befor_count + new_count}")
                 f.write(f"\"\n")
 
+                product_count = 0
+                product_str = ""
+                protocol_count = 0
+                protocol_str = ""
+                grammar_count = 0
+                grammar_str = ""
+
                 next_version = 'project = "{0}" AND issuetype = {1} AND status in (转后续版本处理) AND 发现版本-TY ~ "{2}" AND assignee in ({3})' \
                     .format(project, issuetype, proKey, members)
-
                 issues = self.jira.search_issues(next_version)
                 next_count = len(issues)
-
+                for iss in issues:
+                    if '语法解析' in iss.fields.labels:
+                        grammar_count = grammar_count + 1
+                        grammar_str = grammar_str + iss.key + ','
+                    elif '协议解析' in iss.fields.labels:
+                        protocol_count = protocol_count + 1
+                        protocol_str = protocol_str + iss.key + ','
+                    else:
+                        product_count = product_count + 1
+                        product_str = product_str + iss.key + ','
                 
                 befor1w_undo= 'project = "{0}" AND issuetype = {1} AND status in (创建, 分析, 提交) AND 发现版本-TY ~ "{2}" AND assignee in ({3}) AND created < {4}' \
                     .format(project, issuetype, proKey, members, createData)
                 issues = self.jira.search_issues(befor1w_undo)
                 befor1w_undo_count = len(issues)
+                for iss in issues:
+                    if '语法解析' in iss.fields.labels:
+                        grammar_count = grammar_count + 1
+                        grammar_str = grammar_str + iss.key + ','
+                    elif '协议解析' in iss.fields.labels:
+                        protocol_count = protocol_count + 1
+                        protocol_str = protocol_str + iss.key + ','
+                    else:
+                        product_count = product_count + 1
+                        product_str = product_str + iss.key + ','
 
                 print("风险：")                
                 f.write(f"{proName},风险,\"")
@@ -124,7 +149,98 @@ class JiraTask:
                     if new_line :
                         f.write(f"\n")
                     f.write(f"{befor1w_undo_count}个问题单超过1周未处理")
-                f.write(f"\"\n")
+                f.write(f"\"")
+                if product_count > 0 or protocol_count > 0 or grammar_count > 0:
+                    f.write(f",\"")
+                    new_line = False
+                    if product_count > 0:
+                        f.write(f"c++ {product_count}个")  
+                        print(f"产品端：{protocol_str}") 
+                        new_line = True
+                    if protocol_count > 0:
+                        if new_line:
+                            f.write('\n')
+                        f.write(f"协议解析{protocol_count}个")  
+                        print(f"协议解析：{protocol_str}") 
+                        new_line = True  
+                    if grammar_count > 0:
+                        if new_line:
+                            f.write('\n')
+                        f.write(f"语法解析{grammar_count}个") 
+                        print(f"语法解析：{grammar_str}")
+                    f.write(f"\"")
+                f.write(f"\n")
+                
+
+            print(f"\n线上问题 统计：")
+            issuetype = "任务"
+            status_hang = "主管审核, 问题分析, 问题修改"
+            status_done = "回归完成"
+            task_befor1w_undo= 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created < {3}' \
+                .format(project, issuetype, status_hang, createData)
+            
+            task_new1w = 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
+                .format(project, issuetype, status_hang, createData)
+
+            issues = self.jira.search_issues(task_befor1w_undo)
+            task_befor_count = len(issues)
+
+            issues = self.jira.search_issues(task_new1w)
+            task_new_count = len(issues)
+
+            task_befor1w_done = 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created < {3}' \
+                .format(project, issuetype, status_done, createData)
+            issues = self.jira.search_issues(task_befor1w_done)
+            task_befor_done_count = len(issues)
+            
+            task_new1w_done= 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
+                .format(project, issuetype, status_done, createData)
+            issues = self.jira.search_issues(task_new1w_done)
+            task_new_done_count = len(issues)
+
+            print(f"    历史遗留：{task_befor_count + task_befor_done_count}, 本周完成：{task_befor_done_count}, 未完成:{task_befor_count}")
+            print(f"    本周新增:{task_new_count + task_new_done_count}, 本周完成{task_new_done_count}, 未完成{task_new_count}")
+            print(f"    本周完成总数{task_new_done_count + task_befor_done_count}, 未完成总数{task_befor_count + task_new_count}")
+            f.write(f"线上问题,bugfix,\"")
+            f.write(f"历史遗留：{task_befor_count + task_befor_done_count}, 本周完成：{task_befor_done_count}, 未完成:{task_befor_count}\n")
+            f.write(f"本周新增:{task_new_count + task_new_done_count}, 本周完成{task_new_done_count}, 未完成{task_new_count}\n")
+            f.write(f"本周完成总数{task_new_done_count + task_befor_done_count}, 未完成总数{task_befor_count + task_new_count}")
+            f.write(f"\"\n")
+            print("风险：")                
+            f.write(f"线上问题,风险,\"")
+            task_timeout= 'project = "{0}" AND issuetype = {1} AND Sprint = 432  AND due < now()' \
+                .format(project, issuetype)
+            issues = self.jira.search_issues(task_timeout)
+            task_timeout_count = len(issues)
+            timeout_list = ""
+            new_line = False
+            if task_timeout_count > 0:
+                print(f"{task_timeout_count}个问题逾期未解决")
+                f.write(f"{task_timeout_count}个问题逾期未解决")
+                new_line = True
+                for iss in issues:
+                    timeout_list =  '\n' + timeout_list + iss.fields.summary
+
+            task_timeout1w= 'project = "{0}" AND issuetype = {1} AND Sprint = 432  AND due < {2}' \
+                .format(project, issuetype, "1w")
+            issues = self.jira.search_issues(task_timeout1w)
+            task_timeout1w_count = len(issues)
+            timeout1w_list = ""
+            if task_timeout1w_count > 0:
+                print(f"{task_timeout1w_count}个问题下周到期")
+                if new_line:
+                    f.write("\n")
+                f.write(f"{task_timeout1w_count}个问题下周到期")
+                for iss in issues:
+                    timeout1w_list = '\n' + timeout1w_list + iss.fields.summary 
+            f.write(f"\",\"")
+            if task_timeout_count > 0:
+                f.write(f"逾期：")
+                f.write(f"{timeout_list}")
+            if task_timeout1w_count > 0:
+                f.write(f"下周到期:")
+                f.write(f"{timeout1w_list}")
+            f.write(f"\"")
 
     def FormatPrint(self):
         print("格式化输出")
