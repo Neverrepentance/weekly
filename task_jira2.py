@@ -30,9 +30,9 @@ class JiraTask:
         issuetype = "故障"
         status_hang = "创建, 分析, 提交, 修改评审, 转后续版本处理"
         status_done = "通过, 回归"
-        members="zhangzhen, nijiahe, honglidong, yangmingke, caopo, caichengjie, qianwei, lileping, xunzhihong, currentUser()"
+        members="zhangzhen, nijiahe, honglidong, caopo, caoxu, qianwei,zhangchuangang, yangmingke, caichengjie, lileping, sunzhihong, liuhao"
         members_protocol = "yangmingke,caichengjie,lileping,xunzhihong"
-        members_parse = "caopo,qianwei"
+        members_parse = "caopo,qianwei,caoxu,sunchuangang"
         createData="-1w"
         
         proVersions=[
@@ -101,10 +101,13 @@ class JiraTask:
                 f.write(f"\"\n")
 
                 product_count = 0
+                product_count_new = 0
                 product_str = ""
                 protocol_count = 0
+                protocol_count_new = 0
                 protocol_str = ""
                 grammar_count = 0
+                grammar_count_new = 0
                 grammar_str = ""
 
                 next_version = 'project = "{0}" AND issuetype = {1} AND status in (转后续版本处理) AND 发现版本-TY ~ "{2}" AND assignee in ({3})' \
@@ -122,6 +125,17 @@ class JiraTask:
                         product_count = product_count + 1
                         product_str = product_str + iss.key + ','
                 
+                next_version_new = 'project = "{0}" AND issuetype = {1} AND status in (转后续版本处理) AND 发现版本-TY ~ "{2}" AND assignee in ({3}) AND updated >= -1w' \
+                    .format(project, issuetype, proKey, members)
+                issues_new = self.jira.search_issues(next_version_new)
+                for iss in issues_new:
+                    if '语法解析' in iss.fields.labels:
+                        grammar_count_new = grammar_count_new + 1
+                    elif '协议解析' in iss.fields.labels:
+                        protocol_count_new = protocol_count_new + 1
+                    else:
+                        product_count_new = product_count_new + 1
+                
                 befor1w_undo= 'project = "{0}" AND issuetype = {1} AND status in (创建, 分析, 提交) AND 发现版本-TY ~ "{2}" AND assignee in ({3}) AND created < {4}' \
                     .format(project, issuetype, proKey, members, createData)
                 issues = self.jira.search_issues(befor1w_undo)
@@ -136,6 +150,17 @@ class JiraTask:
                     else:
                         product_count = product_count + 1
                         product_str = product_str + iss.key + ','
+                
+                befor1w_undo_new= 'project = "{0}" AND issuetype = {1} AND status in (创建, 分析, 提交) AND 发现版本-TY ~ "{2}" AND assignee in ({3}) AND created >=-2w AND created < {4}' \
+                    .format(project, issuetype, proKey, members, createData)
+                issues_new = self.jira.search_issues(befor1w_undo_new)
+                for iss in issues_new:
+                    if '语法解析' in iss.fields.labels:
+                        grammar_count_new = grammar_count_new + 1
+                    elif '协议解析' in iss.fields.labels:
+                        protocol_count_new = protocol_count_new + 1
+                    else:
+                        product_count_new = product_count_new + 1
 
                 print("风险：")                
                 f.write(f"{proName},风险,\"")
@@ -154,19 +179,19 @@ class JiraTask:
                     f.write(f",\"")
                     new_line = False
                     if product_count > 0:
-                        f.write(f"c++ {product_count}个")  
-                        print(f"产品端：{protocol_str}") 
+                        f.write(f"c++ {product_count}个，新增{product_count_new}个")  
+                        print(f"产品端：{product_str}") 
                         new_line = True
                     if protocol_count > 0:
                         if new_line:
                             f.write('\n')
-                        f.write(f"协议解析{protocol_count}个")  
+                        f.write(f"协议解析{protocol_count}个，新增{protocol_count_new}个")  
                         print(f"协议解析：{protocol_str}") 
                         new_line = True  
                     if grammar_count > 0:
                         if new_line:
                             f.write('\n')
-                        f.write(f"语法解析{grammar_count}个") 
+                        f.write(f"语法解析{grammar_count}个，新增{grammar_count_new}个") 
                         print(f"语法解析：{grammar_str}")
                     f.write(f"\"")
                 f.write(f"\n")
@@ -208,8 +233,8 @@ class JiraTask:
             f.write(f"\"\n")
             print("风险：")                
             f.write(f"线上问题,风险,\"")
-            task_timeout= 'project = "{0}" AND issuetype = {1} AND Sprint = 432  AND due < now()' \
-                .format(project, issuetype)
+            task_timeout= 'project = "{0}" AND issuetype = {1} AND Sprint = 432 AND status in ({2}) AND due < now()' \
+                .format(project, issuetype, status_hang)
             issues = self.jira.search_issues(task_timeout)
             task_timeout_count = len(issues)
             timeout_list = ""
@@ -221,8 +246,8 @@ class JiraTask:
                 for iss in issues:
                     timeout_list =  '\n' + timeout_list + iss.fields.summary
 
-            task_timeout1w= 'project = "{0}" AND issuetype = {1} AND Sprint = 432  AND due < {2}' \
-                .format(project, issuetype, "1w")
+            task_timeout1w= 'project = "{0}" AND issuetype = {1} AND Sprint = 432 AND status in ({2}) AND due < {3}' \
+                .format(project, issuetype, status_hang, "1w")
             issues = self.jira.search_issues(task_timeout1w)
             task_timeout1w_count = len(issues)
             timeout1w_list = ""
