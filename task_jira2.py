@@ -198,13 +198,13 @@ class JiraTask:
                 
 
             print(f"\n线上问题 统计：")
-            issuetype = "任务"
+            issuetype = "任务,故事"
             status_hang = "主管审核, 问题分析, 问题修改"
             status_done = "回归完成"
-            task_befor1w_undo= 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created < {3}' \
+            task_befor1w_undo= 'project = "{0}" AND issuetype in ({1}) AND status in ({2}) AND Sprint = 432  AND created < {3}' \
                 .format(project, issuetype, status_hang, createData)
             
-            task_new1w = 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
+            task_new1w = 'project = "{0}" AND issuetype in ({1}) AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
                 .format(project, issuetype, status_hang, createData)
 
             issues = self.jira.search_issues(task_befor1w_undo)
@@ -213,12 +213,12 @@ class JiraTask:
             issues = self.jira.search_issues(task_new1w)
             task_new_count = len(issues)
 
-            task_befor1w_done = 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created < {3}' \
+            task_befor1w_done = 'project = "{0}" AND issuetype in ({1}) AND status in ({2}) AND Sprint = 432  AND created < {3}' \
                 .format(project, issuetype, status_done, createData)
             issues = self.jira.search_issues(task_befor1w_done)
             task_befor_done_count = len(issues)
             
-            task_new1w_done= 'project = "{0}" AND issuetype = {1} AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
+            task_new1w_done= 'project = "{0}" AND issuetype in ({1}) AND status in ({2}) AND Sprint = 432  AND created >= {3}' \
                 .format(project, issuetype, status_done, createData)
             issues = self.jira.search_issues(task_new1w_done)
             task_new_done_count = len(issues)
@@ -246,7 +246,7 @@ class JiraTask:
                 for iss in issues:
                     timeout_list =  '\n' + timeout_list + iss.fields.summary
 
-            task_timeout1w= 'project = "{0}" AND issuetype = {1} AND Sprint = 432 AND status in ({2}) AND due < {3}' \
+            task_timeout1w= 'project = "{0}" AND issuetype = {1} AND Sprint = 432 AND status in ({2}) AND due > now() AND due < {3}' \
                 .format(project, issuetype, status_hang, "1w")
             issues = self.jira.search_issues(task_timeout1w)
             task_timeout1w_count = len(issues)
